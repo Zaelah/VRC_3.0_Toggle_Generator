@@ -57,6 +57,15 @@ local ctrl_begin_state_ids = {}
 local param_entries = {}
 local param_letter_by_driver_id = {}
 
+local function add_param_bookkeeping(name, driver_id)
+    ctrl_params[#ctrl_params + 1] = string.gsub(CTRL_PARAM_ENTRY, "$PARAM_NAME", name)
+    param_entries[#param_entries + 1] = string.gsub(PARAM_ENTRY, "$NAME", name)
+    param_letter_by_driver_id[driver_id] = name
+end
+
+add_param_bookkeeping("GestureLeft", next_file_id())
+add_param_bookkeeping("GestureRight", next_file_id())
+
 local param_letter = string.char(string.byte("A") - 1)
 local param_value = 255
 local param_driver_id
@@ -67,9 +76,7 @@ local function next_param()
         param_value = 1
         param_driver_id = next_file_id()
         
-        ctrl_params[#ctrl_params + 1] = string.gsub(CTRL_PARAM_ENTRY, "$PARAM_NAME", param_letter)
-        param_entries[#param_entries + 1] = string.gsub(PARAM_ENTRY, "$NAME", param_letter)
-        param_letter_by_driver_id[param_driver_id] = param_letter
+        add_param_bookkeeping(param_letter, param_driver_id)
     end
     return param_letter, tostring(param_value), param_driver_id
 end
@@ -262,12 +269,12 @@ common.for_each_gesture_name_and_value(gen_state_machine_entries_for_gesture)
 -- generate parameter drivers
 local ctrl_param_drivers = {}
 local entries_by_letter = {}
-for a = string.byte("A"), string.byte(param_letter) do
+for _, a in pairs(param_letter_by_driver_id) do
     local e = {}
-    entries_by_letter[string.char(a)] = e
-    for b = string.byte("A"), string.byte(param_letter) do
+    entries_by_letter[a] = e
+    for _, b in pairs(param_letter_by_driver_id) do
         if a ~= b then
-            e[#e + 1] = string.gsub(PARAM_DRIVER_ENTRY, "$PARAM_NAME", string.char(b))
+            e[#e + 1] = string.gsub(PARAM_DRIVER_ENTRY, "$PARAM_NAME", b)
         end
     end
 end

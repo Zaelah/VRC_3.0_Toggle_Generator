@@ -181,11 +181,16 @@ end
 --       we are currently traversing. Then recurse into that child directory and repeat in order to
 --       fill up the newly created _menu.asset.
 --
---     * If it's a combo file, create a _menu.asset file in the directory under generated/ corresponding
---       to that combo file, and create menu entries pointing to each animation (one for each emote under
---       'template/emotes') in that menu file. This is also where parameter names and values are assigned
---       for each animation. This is also also where a state machine entry for each animation is created
---       in the FXLayer animation controller.
+--     * If it's a combo file and we have emotes under 'template/emotes', create a _menu.asset file in the
+--       directory under generated/ corresponding to that combo file, and create menu entries pointing to
+--       each animation (one for each emote under 'template/emotes') in that menu file. This is also where
+--       parameter names and values are assigned for each animation. This is also also where a state
+--       machine entry for each animation is created in the FXLayer animation controller.
+--
+--     * If it's a combo file and we don't have emotes under 'template/emotes', create an entry in the
+--       menu representing the directory currently being traversed corresponding to that combo's anim
+--       file and do all the plumping work for the parameter names and values, and FXLayer animation
+--       controller.
 local function dir_recurse(input_path, output_path, menu_name)
     local entries = {}
     

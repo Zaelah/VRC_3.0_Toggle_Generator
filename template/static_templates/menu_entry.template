@@ -1,0 +1,10 @@
+  - name: $NAME
+    icon: {fileID: 0}
+    type: $ENTRY_TYPE
+    parameter:
+      name: $PARAM_NAME
+    value: $PARAM_VALUE
+    style: 0
+    subMenu: $SUBMENU
+    subParameters: []
+    labels: []

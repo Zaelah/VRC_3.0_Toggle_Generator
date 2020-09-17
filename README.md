@@ -7,7 +7,7 @@ Preparation
 
   1. Extract the contents of this repo into a folder in your Unity project
   2. Manually extract snippets of toggleable behavior you want to mix-and-match from Unity .anim files (open them up in a text editor) and put them into specially-formatted files under template/states and template/emotes.
-  3. Manually create files for each Toggle you want, listing each file under template/states that should be combined to create the toggleable behavior you want (e.g. combination of Mesh enables/disables, Blendshape values, and/or Mesh material swaps).
+  3. Manually create files for each Toggle you want, listing each file under template/states that should be combined to create the toggleable behavior you want (e.g. combination of Mesh enables/disables, Blendshape values, and/or Mesh material swaps). Put these 'combo' files under template/combos. The folder structure of template/combos will be translated directly into the sub-menu structure in VRChat's Avatar 3.0 rotary expression menu.
 
 Usage
 -----

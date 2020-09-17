@@ -16,6 +16,6 @@ Usage
   2. Open or give focus to your Unity project and wait for it to finish automatically "Importing small assets". This creates files needed for step 3.
   3. Double-click RUN_STEP_2.bat - this will create all menu, parameter and animation controller files.
   4. In your avatar's VRC Avatar Descriptor:
-    * Set Playable Layers > Base > FX to generated/FXLayer.controller
-    * Set Expressions > Menu to generated/Menu.asset
-    * Set Expressions > Parameters to generated/Parameters.asset
+  * Set Playable Layers > Base > FX to generated/FXLayer.controller
+  * Set Expressions > Menu to generated/Menu.asset
+  * Set Expressions > Parameters to generated/Parameters.asset

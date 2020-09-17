@@ -6,10 +6,8 @@ local assert = assert
 local error = error
 
 local exclude_file_patterns = {
-    "^.$", -- current directory
-    "^..$", -- parent directory
+    "^%.", -- current directory, partent directory, and dotfiles like .gitignore
     "%.meta$", -- Unity meta files
-    "^%.", -- dotfiles like .gitignore
 }
 
 return {

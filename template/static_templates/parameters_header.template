@@ -19,4 +19,8 @@ MonoBehaviour:
     valueType: 1
   - name: VRCFaceBlendV
     valueType: 1
+  - name: GestureLeft
+    valueType: 0
+  - name: GestureRight
+    valueType: 0
 $ENTRIES

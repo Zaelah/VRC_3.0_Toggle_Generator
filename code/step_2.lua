@@ -3,7 +3,6 @@ package.path = package.path .. ";code/?.lua"
 
 local common = require "common"
 local io = require "io"
-local lfs = require "lfs"
 local os = require "os"
 local string = require "string"
 local table = require "table"
@@ -74,15 +73,9 @@ local function next_param()
 end
 
 local emotes = {}
-for path in lfs.dir("template/emotes/") do
-    if common.is_excluded_filename(path) then
-        goto continue
-    end
-    
-    local name = string.match(path, "(.+)%.lua")
+for filename in common.directory("template/emotes/") do
+    local name = string.match(filename, "(.+)%.lua")
     emotes[#emotes + 1] = name
-    
-    ::continue::
 end
 table.sort(emotes)
 
@@ -95,6 +88,62 @@ local function gen_submenu(name, guid)
     local submenu = string.format("{fileID: 11400000, guid: %s, type: 2}", guid)
     entry = string.gsub(entry, "$SUBMENU", submenu)
     return entry
+end
+
+local function gen_state_machine_entry(param_name, param_value, anim_guid, param_driver_id)
+    local begin_id = next_file_id()
+    local end_id = next_file_id()
+    local anim_id = next_file_id()
+    
+    local toggle = CTRL_TOGGLE_ENTRY
+    toggle = string.gsub(toggle, "$PARAM_NAME", param_name)
+    toggle = string.gsub(toggle, "$PARAM_VALUE", param_value)
+    toggle = string.gsub(toggle, "$ANIM_GUID", anim_guid)
+    toggle = string.gsub(toggle, "$ANIM_NAME", param_name .. param_value)
+    toggle = string.gsub(toggle, "$BEGIN_STATE_ID", begin_id)
+    toggle = string.gsub(toggle, "$END_STATE_ID", end_id)
+    toggle = string.gsub(toggle, "$ANIM_STATE_ID", anim_id)
+    local param_driver = param_driver_id and ("\n  - {fileID: ".. param_driver_id .."}")
+    toggle = string.gsub(toggle, "$PARAM_DRIVER_ID", param_driver or " []")
+    ctrl_toggles[#ctrl_toggles + 1] = toggle
+    
+    local begin_entry = CTRL_BEGIN_STATE_ENTRY
+    begin_entry = string.gsub(begin_entry, "$BEGIN_STATE_ID", begin_id)
+    ctrl_begin_state_ids[#ctrl_begin_state_ids + 1] = begin_entry
+    
+    local anim_entry = CTRL_ANIM_STATE_ENTRY
+    anim_entry = string.gsub(anim_entry, "$ANIM_STATE_ID", anim_id)
+    ctrl_anim_state_ids[#ctrl_anim_state_ids + 1] = anim_entry
+end
+
+local function gen_single_gesture_state_machine(path, param_name, param_value)
+    local guid = get_guid(path)
+    gen_state_machine_entry(param_name, param_value, guid)
+end
+
+local function gen_state_machine_entries_for_gesture(name, param_value)
+    local input_dir = "template/gestures/" .. name .. "/"
+    local output_dir = "generated/gestures/" .. name .. "/"
+    
+    local left, right
+    
+    for filename, path, is_dir in common.directory(input_dir) do
+        if not is_dir then
+            local lower = string.lower(filename)
+            
+            if not left and string.find(lower, "left") then
+                left = true
+                gen_single_gesture_state_machine(output_dir .. "left.anim", "GestureLeft", param_value)
+            end
+            
+            if not right and string.find(lower, "right") then
+                right = true
+                gen_single_gesture_state_machine(output_dir .. "right.anim", "GestureRight", param_value)
+            end
+            
+            if left and right then return end
+        end
+    end
 end
 
 -- The function that does most of the heavy lifting.
@@ -117,12 +166,9 @@ end
 local function dir_recurse(input_path, output_path, menu_name)
     local entries = {}
     
-    for filename in lfs.dir(input_path) do
-        if common.is_excluded_filename(filename) then goto continue end
-        local path = input_path .. filename
-        
+    for filename, path, is_dir in common.directory(input_path) do
         -- for directories, create a new menu file under that directory and recurse to fill it up
-        if lfs.attributes(path, "mode") == "directory" then
+        if is_dir then
             local out_path = output_path .. filename .. "/"
             local menu_path = out_path .. "_menu.asset"
             
@@ -158,28 +204,7 @@ local function dir_recurse(input_path, output_path, menu_name)
             entries[#entries + 1] = entry
             
             -- create corresponding state machine entry for this anim
-            local begin_id = next_file_id()
-            local end_id = next_file_id()
-            local anim_id = next_file_id()
-            
-            local toggle = CTRL_TOGGLE_ENTRY
-            toggle = string.gsub(toggle, "$PARAM_NAME", param_letter)
-            toggle = string.gsub(toggle, "$PARAM_VALUE", param_value)
-            toggle = string.gsub(toggle, "$ANIM_GUID", guid)
-            toggle = string.gsub(toggle, "$ANIM_NAME", param_letter .. param_value)
-            toggle = string.gsub(toggle, "$BEGIN_STATE_ID", begin_id)
-            toggle = string.gsub(toggle, "$END_STATE_ID", end_id)
-            toggle = string.gsub(toggle, "$ANIM_STATE_ID", anim_id)
-            toggle = string.gsub(toggle, "$PARAM_DRIVER_ID", param_driver_id)
-            ctrl_toggles[#ctrl_toggles + 1] = toggle
-            
-            local begin_entry = CTRL_BEGIN_STATE_ENTRY
-            begin_entry = string.gsub(begin_entry, "$BEGIN_STATE_ID", begin_id)
-            ctrl_begin_state_ids[#ctrl_begin_state_ids + 1] = begin_entry
-            
-            local anim_entry = CTRL_ANIM_STATE_ENTRY
-            anim_entry = string.gsub(anim_entry, "$ANIM_STATE_ID", anim_id)
-            ctrl_anim_state_ids[#ctrl_anim_state_ids + 1] = anim_entry
+            gen_state_machine_entry(param_letter, param_value, guid, param_driver_id)
         end
         
         local data = MENU_HEADER
@@ -199,7 +224,10 @@ local function dir_recurse(input_path, output_path, menu_name)
 end
 
 io.write("Generating Menu.asset...\n")
-dir_recurse("template/combos/", "generated/", "Menu.asset")
+dir_recurse("template/combos/", "generated/combos/", "Menu.asset")
+
+io.write("Generating Gestures (if any)...\n")
+common.for_each_gesture_name_and_value(gen_state_machine_entries_for_gesture)
 
 -- generate parameter drivers
 local ctrl_param_drivers = {}
@@ -225,7 +253,7 @@ end
 
 -- generate parameter file
 io.write("Generating Parameters.asset...\n")
-local slots = 16 - 3 -- leave 3 default VRChat params in place
+local slots = 16 - 5 -- leave 5 default VRChat params in place
 if #param_entries > slots then
     common.errfmt("Too many parameters, max is %d, got %d", slots, #param_entries)
 end

@@ -9,6 +9,18 @@ AnimatorController:
   m_Name: ExampleCtrl
   serializedVersion: 5
   m_AnimatorParameters:
+  - m_Name: GestureLeft
+    m_Type: 3
+    m_DefaultFloat: 0
+    m_DefaultInt: 0
+    m_DefaultBool: 0
+    m_Controller: {fileID: 0}
+  - m_Name: GestureRight
+    m_Type: 3
+    m_DefaultFloat: 0
+    m_DefaultInt: 0
+    m_DefaultBool: 0
+    m_Controller: {fileID: 0}
 $PARAMS
   m_AnimatorLayers:
   - serializedVersion: 5

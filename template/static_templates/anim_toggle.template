@@ -60,8 +60,7 @@ AnimatorState:
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: $END_STATE_ID}
-  m_StateMachineBehaviours:
-  - {fileID: $PARAM_DRIVER_ID}
+  m_StateMachineBehaviours:$PARAM_DRIVER_ID
   m_Position: {x: 50, y: 50, z: 0}
   m_IKOnFeet: 0
   m_WriteDefaultValues: 1

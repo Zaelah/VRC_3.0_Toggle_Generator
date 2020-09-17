@@ -36,15 +36,9 @@ end
 
 local function templates_by_name(dir)
     local tbl = {}
-    for path in lfs.dir(dir) do
-        if common.is_excluded_filename(path) then
-            goto continue
-        end
-        
-        local name = string.match(path, "(.+)%.lua")
-        tbl[name] = open_template(dir .. path)
-        
-        ::continue::
+    for filename, path in common.directory(dir) do
+        local name = string.match(filename, "(.+)%.lua")
+        tbl[name] = open_template(path)
     end
     return tbl
 end
@@ -63,7 +57,7 @@ local function newline_str_or_blank(str)
     return ""
 end
 
-local function open_combo(path)
+local function read_combo_file(path)
     -- one entry per line, lines starting with '#' are comments
     local ret = {}
     for line in io.lines(path) do
@@ -75,49 +69,90 @@ local function open_combo(path)
     return ret
 end
 
+local function open_combo(path)
+    local float_curves = {}
+    local pptr_curves = {}
+    
+    local list = read_combo_file(path)
+    for i = 1, #list do
+        local state = states_by_name[list[i]]
+        
+        if not state then
+            common.errfmt('Unknown state "%s" found in "%s"', list[i], input_path)
+        end
+        
+        float_curves[#float_curves + 1] = state.float_curves
+        pptr_curves[#pptr_curves + 1] = state.pptr_curves
+    end
+    
+    local float = #float_curves > 0 and ("\n" .. table.concat(float_curves, "\n"))
+    local pptr = #pptr_curves > 0 and ("\n" .. table.concat(pptr_curves, "\n"))
+    
+    return float, pptr
+end
+
+local function write_anim_file(path, name, float, pptr)
+    local data = ANIM_TEMPLATE
+    data = string.gsub(data, "$NAME", name)
+    data = string.gsub(data, "$FLOAT_CURVES", float or " []")
+    data = string.gsub(data, "$PPTR_CURVES", pptr or " []")
+    common.write_file(path, data)
+end
+
+local function gen_single_gesture_anim(input_path, output_path, name)
+    local float, pptr = open_combo(input_path)
+    write_anim_file(output_path, name, float, pptr)
+    generated_anim_count = generated_anim_count + 1
+end
+
+local function gen_anims_for_gesture(name)
+    local input_dir = "template/gestures/" .. name .. "/"
+    local output_dir = "generated/gestures/" .. name .. "/"
+    lfs.mkdir(output_dir)
+    
+    local left, right
+    
+    for filename, path, is_dir in common.directory(input_dir) do
+        if not is_dir then
+            local lower = string.lower(filename)
+            
+            if not left and string.find(lower, "left") then
+                left = true
+                gen_single_gesture_anim(path, output_dir .. "left.anim", name .. "_left")
+            end
+            
+            if not right and string.find(lower, "right") then
+                right = true
+                gen_single_gesture_anim(path, output_dir .. "right.anim", name .. "_right")
+            end
+            
+            if left and right then return end
+        end
+    end
+end
+
 local function gen_anims_for_combo(filename, input_path, output_path)
     local dir_name = string.match(filename, "(.+)%.txt")
     local out_dir = output_path .. dir_name .. "/"
     lfs.mkdir(out_dir)
     touch(out_dir .. "_menu.asset")
     
-    local states_list = open_combo(input_path)
-    local states_data = {}
+    local states_float, states_pptr = open_combo(input_path)
     local anim_count = 0
     
-    local state_float_curves = {}
-    local state_pptr_curves = {}
-    
-    for i = 1, #states_list do
-        local state = states_by_name[states_list[i]]
-        
-        if not state then
-            common.errfmt('Unknown state "%s" found in "%s"', states_list[i], input_path)
-        end
-        
-        state_float_curves[#state_float_curves + 1] = state.float_curves
-        state_pptr_curves[#state_pptr_curves + 1] = state.pptr_curves
-    end
-    
-    local states_float = #state_float_curves > 0 and table.concat(state_float_curves, "\n")
-    local states_pptr = #state_pptr_curves > 0 and table.concat(state_pptr_curves, "\n")
     for emote_name, emote_data in pairs(emotes_by_name) do
         local float, pptr
         
         if states_float or emote_data.float_curves then
-            float = newline_str_or_blank(states_float) .. newline_str_or_blank(emote_data.float_curves)
+            float = (states_float or "") .. newline_str_or_blank(emote_data.float_curves)
         end
         if states_pptr or emote_data.pptr_curves then
-            pptr = newline_str_or_blank(states_pptr) .. newline_str_or_blank(emote_data.pptr_curves)
+            pptr = (states_pptr or "") .. newline_str_or_blank(emote_data.pptr_curves)
         end
         
-        local data = ANIM_TEMPLATE
-        data = string.gsub(data, "$NAME", dir_name .." ".. emote_name)
-        data = string.gsub(data, "$FLOAT_CURVES", float or " []")
-        data = string.gsub(data, "$PPTR_CURVES", pptr or " []")
-        
         local path = out_dir .. emote_name .. ".anim"
-        common.write_file(path, data)
+        local name = dir_name .." ".. emote_name
+        write_anim_file(path, name, float, pptr)
         
         anim_count = anim_count + 1
     end
@@ -127,26 +162,24 @@ local function gen_anims_for_combo(filename, input_path, output_path)
 end
 
 local function dir_recurse(input_path, output_path)
-    for filename in lfs.dir(input_path) do
-        if common.is_excluded_filename(filename) then goto continue end
-        local path = input_path .. filename
-        
-        if lfs.attributes(path, "mode") == "directory" then
+    for filename, path, is_dir in common.directory(input_path) do
+        if is_dir then
             local out_path = output_path .. filename .. "/"
             lfs.mkdir(out_path)
             touch(out_path .. "_menu.asset")
             dir_recurse(path .. "/", out_path)
-            goto continue
+        else
+            gen_anims_for_combo(filename, path, output_path)
         end
-        
-        gen_anims_for_combo(filename, path, output_path)
-        
-        ::continue::
     end
 end
 
 io.write("Generating animation files...\n")
-dir_recurse("template/combos/", "generated/")
+lfs.mkdir("generated/gestures/")
+common.for_each_gesture_name_and_value(gen_anims_for_gesture)
+
+lfs.mkdir("generated/combos/")
+dir_recurse("template/combos/", "generated/combos/")
 
 touch("generated/_CHECK_UNITY_META")
 

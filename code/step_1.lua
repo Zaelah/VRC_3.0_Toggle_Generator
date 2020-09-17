@@ -113,14 +113,12 @@ local function gen_anims_for_combo(filename, input_path, output_path)
         end
         
         local data = ANIM_TEMPLATE
-        
         data = string.gsub(data, "$NAME", dir_name .." ".. emote_name)
         data = string.gsub(data, "$FLOAT_CURVES", float or " []")
         data = string.gsub(data, "$PPTR_CURVES", pptr or " []")
         
-        local file = assert(io.open(out_dir .. emote_name .. ".anim", "wb+"))
-        file:write(data)
-        file:close()
+        local path = out_dir .. emote_name .. ".anim"
+        common.write_file(path, data)
         
         anim_count = anim_count + 1
     end

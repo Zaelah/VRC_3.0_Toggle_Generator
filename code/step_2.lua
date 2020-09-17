@@ -21,6 +21,7 @@ if not check then
     io.write("ERROR: Open or give focus to the Unity project and wait for it to generate .meta files!\n")
     return
 end
+check:close()
 os.remove("generated/_CHECK_UNITY_META")
 os.remove("generated/_CHECK_UNITY_META.meta")
 
@@ -164,24 +165,20 @@ local function dir_recurse(input_path, output_path, menu_name)
             ctrl_anim_state_ids[#ctrl_anim_state_ids + 1] = anim_entry
         end
         
-        local menu_file = assert(io.open(output_emote_path .. "_menu.asset", "wb+"))
         local data = MENU_HEADER
         data = string.gsub(data, "$NAME", "Menu")
         data = string.gsub(data, "$ENTRIES", table.concat(entries))
-        menu_file:write(data)
-        menu_file:close()
+        common.write_file(output_emote_path .. "_menu.asset", data)
         
         ::continue::
     end
     
     menu_name = menu_name or "_menu.asset"
-    local menu_file = assert(io.open(output_path .. menu_name, "wb+"))
     local pretty_name = string.match(menu_name, "(.+)%.asset")
     local data = MENU_HEADER
     data = string.gsub(data, "$NAME", pretty_name)
     data = string.gsub(data, "$ENTRIES", table.concat(entries))
-    menu_file:write(data)
-    menu_file:close()
+    common.write_file(output_path .. menu_name, data)
 end
 
 io.write("Generating Menu.asset...\n")
@@ -222,9 +219,7 @@ end
 local data = PARAM_HEADER
 data = string.gsub(data, "$NAME", "Parameters")
 data = string.gsub(data, "$ENTRIES", table.concat(param_entries, "\n"))
-local file = assert(io.open("generated/Parameters.asset", "wb+"))
-file:write(data)
-file:close()
+common.write_file("generated/Parameters.asset", data)
 
 -- generate FXLayer
 io.write("Generating FXLayer.controller...\n")
@@ -234,8 +229,6 @@ ctrl = string.gsub(ctrl, "$PARAM_DRIVERS", table.concat(ctrl_param_drivers, "\n"
 ctrl = string.gsub(ctrl, "$TOGGLES", table.concat(ctrl_toggles, "\n"))
 ctrl = string.gsub(ctrl, "$ANIM_STATE_ID_ENTRIES", table.concat(ctrl_anim_state_ids, "\n"))
 ctrl = string.gsub(ctrl, "$BEGIN_STATE_ID_ENTRIES", table.concat(ctrl_begin_state_ids, "\n"))
-local file = assert(io.open("generated/FXLayer.controller", "wb+"))
-file:write(ctrl)
-file:close()
+common.write_file("generated/FXLayer.controller", ctrl)
 
 io.write("Done\n")

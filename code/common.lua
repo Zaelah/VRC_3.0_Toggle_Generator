@@ -30,4 +30,10 @@ return {
         end
         return false
     end,
+    
+    write_file = function(path, data)
+        local file = assert(io.open(path, "wb+"))
+        file:write(data)
+        file:close()
+    end,
 }

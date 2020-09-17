@@ -8,8 +8,6 @@ local os = require "os"
 local string = require "string"
 local table = require "table"
 
-local assert = assert
-local error = error
 local pairs = pairs
 local tostring = tostring
 
@@ -40,7 +38,7 @@ local function get_guid(path)
     local str = common.file_to_str(path .. ".meta")
     local guid = string.match(str, "guid:%s*([^%s]+)")
     if not guid then
-        error(string.format("no guid for file '%s'", path))
+        common.errfmt("no guid for file '%s'", path)
     end
     return guid
 end

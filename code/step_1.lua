@@ -9,7 +9,6 @@ local string = require "string"
 local table = require "table"
 
 local assert = assert
-local error = error
 local loadfile = loadfile
 local pairs = pairs
 local setfenv = setfenv

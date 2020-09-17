@@ -35,16 +35,20 @@ local function open_template(path)
 end
 
 local function templates_by_name(dir)
+    local count = 0
     local tbl = {}
-    for filename, path in common.directory(dir) do
-        local name = string.match(filename, "(.+)%.lua")
-        tbl[name] = open_template(path)
+    for filename, path, is_dir in common.directory(dir) do
+        if not is_dir then
+            local name = string.match(filename, "(.+)%.lua")
+            tbl[name] = open_template(path)
+            count = count + 1
+        end
     end
-    return tbl
+    return tbl, count
 end
 
 io.write("Loading templates...\n")
-local emotes_by_name = templates_by_name("template/emotes/")
+local emotes_by_name, emote_count = templates_by_name("template/emotes/")
 local states_by_name = templates_by_name("template/states/")
 
 local generated_anim_count = 0
@@ -132,33 +136,38 @@ local function gen_anims_for_gesture(name)
 end
 
 local function gen_anims_for_combo(filename, input_path, output_path)
-    local dir_name = string.match(filename, "(.+)%.txt")
-    local out_dir = output_path .. dir_name .. "/"
-    lfs.mkdir(out_dir)
-    touch(out_dir .. "_menu.asset")
-    
+    local combo_name = string.match(filename, "(.+)%.txt")
     local states_float, states_pptr = open_combo(input_path)
-    local anim_count = 0
     
-    for emote_name, emote_data in pairs(emotes_by_name) do
-        local float, pptr
+    if emote_count == 0 then
+        -- no emotes specified, just make a single animation for this combo
+        local path = output_path .. combo_name .. ".anim"
+        write_anim_file(path, combo_name, float, pptr)
+        generated_anim_count = generated_anim_count + 1
+    else
+        -- generate a full set of emotes for each combo
+        local out_dir = output_path .. combo_name .. "/"
+        lfs.mkdir(out_dir)
+        touch(out_dir .. "_menu.asset")
         
-        if states_float or emote_data.float_curves then
-            float = (states_float or "") .. newline_str_or_blank(emote_data.float_curves)
+        for emote_name, emote_data in pairs(emotes_by_name) do
+            local float, pptr
+            
+            if states_float or emote_data.float_curves then
+                float = (states_float or "") .. newline_str_or_blank(emote_data.float_curves)
+            end
+            if states_pptr or emote_data.pptr_curves then
+                pptr = (states_pptr or "") .. newline_str_or_blank(emote_data.pptr_curves)
+            end
+            
+            local path = out_dir .. emote_name .. ".anim"
+            local name = combo_name .." ".. emote_name
+            write_anim_file(path, name, float, pptr)
         end
-        if states_pptr or emote_data.pptr_curves then
-            pptr = (states_pptr or "") .. newline_str_or_blank(emote_data.pptr_curves)
-        end
         
-        local path = out_dir .. emote_name .. ".anim"
-        local name = dir_name .." ".. emote_name
-        write_anim_file(path, name, float, pptr)
-        
-        anim_count = anim_count + 1
+        generated_combo_count = generated_combo_count + 1
+        generated_anim_count = generated_anim_count + emote_count
     end
-    
-    generated_anim_count = generated_anim_count + anim_count
-    generated_combo_count = generated_combo_count + 1
 end
 
 local function dir_recurse(input_path, output_path)

@@ -10,6 +10,8 @@ local table = require "table"
 local pairs = pairs
 local tostring = tostring
 
+local MAX_ENTRIES_PER_MENU = 8
+
 local MENU_ENTRY_TYPE_TOGGLE = "102"
 local MENU_ENTRY_TYPE_SUBMENU = "103"
 
@@ -79,6 +81,12 @@ for filename in common.directory("template/emotes/") do
 end
 table.sort(emotes)
 
+if #emotes > MAX_ENTRIES_PER_MENU then
+    io.write(string.format('ERROR: too many emotes in "template/emotes/", max is %d, got %d\n',
+        MAX_ENTRIES_PER_MENU, #emotes))
+    return
+end
+
 local function gen_submenu(name, guid)
     local entry = MENU_ENTRY
     entry = string.gsub(entry, "$NAME", name)
@@ -114,6 +122,21 @@ local function gen_state_machine_entry(param_name, param_value, anim_guid, param
     local anim_entry = CTRL_ANIM_STATE_ENTRY
     anim_entry = string.gsub(anim_entry, "$ANIM_STATE_ID", anim_id)
     ctrl_anim_state_ids[#ctrl_anim_state_ids + 1] = anim_entry
+end
+
+local function gen_menu_toggle_entry(name, guid)
+    local param_letter, param_value, param_driver_id = next_param()
+    
+    local entry = MENU_ENTRY
+    entry = string.gsub(entry, "$NAME", name)
+    entry = string.gsub(entry, "$ENTRY_TYPE", MENU_ENTRY_TYPE_TOGGLE)
+    entry = string.gsub(entry, "$PARAM_NAME", param_letter)
+    entry = string.gsub(entry, "$PARAM_VALUE", param_value)
+    entry = string.gsub(entry, "$SUBMENU", "{fileID: 0}")
+    
+    -- create corresponding state machine entry for this anim
+    gen_state_machine_entry(param_letter, param_value, guid, param_driver_id)
+    return entry
 end
 
 local function gen_single_gesture_state_machine(path, param_name, param_value)
@@ -180,39 +203,41 @@ local function dir_recurse(input_path, output_path, menu_name)
             goto continue
         end
         
-        -- for combo files, create a menu corresponding to the combo file
-        -- and fill it with toggles for each emote
-        local stripped = string.match(filename, "(.+)%.txt")
-        local output_emote_path = output_path .. stripped .. "/"
+        local combo_name = string.match(filename, "(.+)%.txt")
         
-        local guid = get_guid(output_emote_path .. "_menu.asset")
-        entries[#entries + 1] = gen_submenu(stripped, guid)
-        
-        local entries = {}
-        
-        for i = 1, #emotes do
-            local emote_name = emotes[i]
-            local param_letter, param_value, param_driver_id = next_param()
+        if #emotes == 0 then
+            -- for combo files without emotes, create one menu entry for the combo anim
+            local anim_path = output_path .. combo_name .. ".anim"
+            local guid = get_guid(anim_path)
+            entries[#entries + 1] = gen_menu_toggle_entry(combo_name, guid)
+        else
+            -- for combo files with emotes, create a menu corresponding to the combo file
+            -- and fill it with toggles for each emote
+            local output_emote_path = output_path .. combo_name .. "/"
+            local guid = get_guid(output_emote_path .. "_menu.asset")
+            entries[#entries + 1] = gen_submenu(combo_name, guid)
             
-            local guid = get_guid(output_emote_path .. emote_name .. ".anim")
-            local entry = MENU_ENTRY
-            entry = string.gsub(entry, "$NAME", emote_name)
-            entry = string.gsub(entry, "$ENTRY_TYPE", MENU_ENTRY_TYPE_TOGGLE)
-            entry = string.gsub(entry, "$PARAM_NAME", param_letter)
-            entry = string.gsub(entry, "$PARAM_VALUE", param_value)
-            entry = string.gsub(entry, "$SUBMENU", "{fileID: 0}")
-            entries[#entries + 1] = entry
+            local entries = {}
             
-            -- create corresponding state machine entry for this anim
-            gen_state_machine_entry(param_letter, param_value, guid, param_driver_id)
+            for i = 1, #emotes do
+                local emote_name = emotes[i]
+                local guid = get_guid(output_emote_path .. emote_name .. ".anim")
+                entries[#entries + 1] = gen_menu_toggle_entry(emote_name, guid)
+            end
+            
+            local data = MENU_HEADER
+            data = string.gsub(data, "$NAME", "Menu")
+            data = string.gsub(data, "$ENTRIES", table.concat(entries))
+            common.write_file(output_emote_path .. "_menu.asset", data)
         end
         
-        local data = MENU_HEADER
-        data = string.gsub(data, "$NAME", "Menu")
-        data = string.gsub(data, "$ENTRIES", table.concat(entries))
-        common.write_file(output_emote_path .. "_menu.asset", data)
-        
         ::continue::
+    end
+    
+    if #entries > MAX_ENTRIES_PER_MENU then
+        io.write(string.format('ERROR: too many combo files and/or folders in "%s", max is %d, got %d\n',
+            input_path, MAX_ENTRIES_PER_MENU, #entries))
+        os.exit()
     end
     
     menu_name = menu_name or "_menu.asset"

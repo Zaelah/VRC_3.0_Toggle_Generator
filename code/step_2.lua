@@ -254,7 +254,7 @@ local function dir_recurse(input_path, output_path, menu_name)
 end
 
 io.write("Generating Menu.asset...\n")
-dir_recurse("template/combos/", "generated/combos/", "Menu.asset")
+dir_recurse("template/combos/", "generated/combos/", "../Menu.asset")
 
 io.write("Generating Gestures (if any)...\n")
 common.for_each_gesture_name_and_value(gen_state_machine_entries_for_gesture)

@@ -91,7 +91,7 @@ local function gen_submenu(name, guid)
     local entry = MENU_ENTRY
     entry = string.gsub(entry, "$NAME", name)
     entry = string.gsub(entry, "$ENTRY_TYPE", MENU_ENTRY_TYPE_SUBMENU)
-    entry = string.gsub(entry, "$PARAM_NAME", "")
+    entry = string.gsub(entry, "$PARAM_NAME", " ")
     entry = string.gsub(entry, "$PARAM_VALUE", "1")
     local submenu = string.format("{fileID: 11400000, guid: %s, type: 2}", guid)
     entry = string.gsub(entry, "$SUBMENU", submenu)

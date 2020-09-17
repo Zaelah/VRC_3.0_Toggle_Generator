@@ -49,7 +49,7 @@ io.write("Loading templates...\n")
 local states_by_name = templates_by_name("template/states/")
 
 local generated_anim_count = 0
-local generated_combo_count = 0
+local generated_emote_set_count = 0
 
 local function read_combo_file(path)
     -- one entry per line, lines starting with '#' are comments
@@ -86,15 +86,21 @@ local function open_combo(path)
 end
 
 local emote_count = 0
-local emotes_by_name = {}
-for filename, path, is_dir in common.directory("template/emotes/") do
-    if not is_dir then
-        local float, pptr = open_combo(path)
-        local name = common.filename_remove_extension(filename)
-        emotes_by_name[name] = { float = float, pptr = pptr }
-        emote_count = emote_count + 1
+local function emote_read_recurse(dir)
+    local ret = { data_by_name = {}, directories = {} }
+    for filename, path, is_dir in common.directory(dir) do
+        if not is_dir then
+            local float, pptr = open_combo(path)
+            local name = common.filename_remove_extension(filename)
+            ret.data_by_name[name] = { float = float, pptr = pptr }
+            emote_count = emote_count + 1
+        else
+            ret.directories[filename] = emote_read_recurse(dir .. filename .. "/")
+        end
     end
+    return ret
 end
+local emotes = emote_read_recurse("template/emotes/")
 
 local function write_anim_file(path, name, float, pptr)
     local data = ANIM_TEMPLATE
@@ -136,6 +142,32 @@ local function gen_anims_for_gesture(name)
     end
 end
 
+local function emote_gen_recurse(emotes, dir, name, states_float, states_pptr)
+    local out_dir = dir .. name .. "/"
+    lfs.mkdir(out_dir)
+    touch(out_dir .. "_menu.asset")
+    
+    for emote_name, emote_data in pairs(emotes.data_by_name) do
+        local float, pptr
+        
+        if states_float or emote_data.float then
+            float = (states_float or "") .. (emote_data.float or "")
+        end
+        if states_pptr or emote_data.pptr then
+            pptr = (states_pptr or "") .. (emote_data.pptr or "")
+        end
+        
+        local path = out_dir .. emote_name .. ".anim"
+        local name = name .." ".. emote_name
+        write_anim_file(path, name, float, pptr)
+        ::continue::
+    end
+    
+    for name, tbl in pairs(emotes.directories) do
+        emote_gen_recurse(tbl, out_dir, name, states_float, states_pptr)
+    end
+end
+
 local function gen_anims_for_combo(filename, input_path, output_path)
     local combo_name = common.filename_remove_extension(filename)
     local states_float, states_pptr = open_combo(input_path)
@@ -147,26 +179,9 @@ local function gen_anims_for_combo(filename, input_path, output_path)
         generated_anim_count = generated_anim_count + 1
     else
         -- generate a full set of emotes for each combo
-        local out_dir = output_path .. combo_name .. "/"
-        lfs.mkdir(out_dir)
-        touch(out_dir .. "_menu.asset")
+        emote_gen_recurse(emotes, output_path, combo_name, states_float, states_pptr)
         
-        for emote_name, emote_data in pairs(emotes_by_name) do
-            local float, pptr
-            
-            if states_float or emote_data.float then
-                float = (states_float or "") .. (emote_data.float or "")
-            end
-            if states_pptr or emote_data.pptr then
-                pptr = (states_pptr or "") .. (emote_data.pptr or "")
-            end
-            
-            local path = out_dir .. emote_name .. ".anim"
-            local name = combo_name .." ".. emote_name
-            write_anim_file(path, name, float, pptr)
-        end
-        
-        generated_combo_count = generated_combo_count + 1
+        generated_emote_set_count = generated_emote_set_count + 1
         generated_anim_count = generated_anim_count + emote_count
     end
 end
@@ -194,7 +209,7 @@ dir_recurse("template/combos/", "generated/combos/")
 touch("generated/_CHECK_UNITY_META")
 
 -- post-generation report --
-io.write(string.format("Generated %d anims in %d sets (%0.3f sec)\n", 
+io.write(string.format("Generated %d anims in %d emote sets (%0.3f sec)\n", 
                         generated_anim_count,
-                        generated_combo_count,
+                        generated_emote_set_count,
                         os.clock()))

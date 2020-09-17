@@ -81,18 +81,31 @@ local function next_param()
     return param_letter, tostring(param_value), param_driver_id
 end
 
-local emotes = {}
-for filename in common.directory("template/emotes/") do
-    local name = common.filename_remove_extension(filename)
-    emotes[#emotes + 1] = name
+local emote_count = 0
+local function emote_read_recurse(dir)
+    local count = 0
+    local ret = { emote_list = {}, directories = {} }
+    for filename, _, is_dir in common.directory(dir) do
+        count = count + 1
+        if not is_dir then
+            local name = common.filename_remove_extension(filename)
+            ret.emote_list[#ret.emote_list + 1] = name
+        else
+            ret.directories[filename] = emote_read_recurse(dir .. filename .. "/")
+        end
+    end
+    
+    if count > MAX_ENTRIES_PER_MENU then
+        io.write(string.format('ERROR: too many emotes and/or folders in "%s", max is %d, got %d\n',
+            dir, MAX_ENTRIES_PER_MENU, count))
+        os.exit()
+    end
+    emote_count = emote_count + count
+    
+    table.sort(ret.emote_list)
+    return ret
 end
-table.sort(emotes)
-
-if #emotes > MAX_ENTRIES_PER_MENU then
-    io.write(string.format('ERROR: too many emotes in "template/emotes/", max is %d, got %d\n',
-        MAX_ENTRIES_PER_MENU, #emotes))
-    return
-end
+local emotes = emote_read_recurse("template/emotes/")
 
 local function gen_submenu(name, guid)
     local entry = MENU_ENTRY
@@ -146,7 +159,12 @@ local function gen_menu_toggle_entry(name, guid)
     return entry
 end
 
+local gesture_msg
 local function gen_single_gesture_state_machine(path, param_name, param_value)
+    if not gesture_msg then
+        gesture_msg = true
+        io.write("Generating Gestures...\n")
+    end
     local guid = get_guid(path)
     gen_state_machine_entry(param_name, param_value, guid)
 end
@@ -174,6 +192,29 @@ local function gen_state_machine_entries_for_gesture(name, param_value)
             if left and right then return end
         end
     end
+end
+
+local function emote_gen_recurse(emotes, output_path, name, parent_entries)
+    local output_emote_path = output_path .. name .. "/"
+    local guid = get_guid(output_emote_path .. "_menu.asset")
+    parent_entries[#parent_entries + 1] = gen_submenu(name, guid)
+    
+    local entries = {}
+    
+    for i = 1, #emotes.emote_list do
+        local emote_name = emotes.emote_list[i]
+        local guid = get_guid(output_emote_path .. emote_name .. ".anim")
+        entries[#entries + 1] = gen_menu_toggle_entry(emote_name, guid)
+    end
+    
+    for name, tbl in pairs(emotes.directories) do
+        emote_gen_recurse(tbl, output_emote_path, name, entries)
+    end
+    
+    local data = MENU_HEADER
+    data = string.gsub(data, "$NAME", "Menu")
+    data = string.gsub(data, "$ENTRIES", table.concat(entries))
+    common.write_file(output_emote_path .. "_menu.asset", data)
 end
 
 -- The function that does most of the heavy lifting.
@@ -217,7 +258,7 @@ local function dir_recurse(input_path, output_path, menu_name)
         
         local combo_name = common.filename_remove_extension(filename)
         
-        if #emotes == 0 then
+        if emote_count == 0 then
             -- for combo files without emotes, create one menu entry for the combo anim
             local anim_path = output_path .. combo_name .. ".anim"
             local guid = get_guid(anim_path)
@@ -225,22 +266,7 @@ local function dir_recurse(input_path, output_path, menu_name)
         else
             -- for combo files with emotes, create a menu corresponding to the combo file
             -- and fill it with toggles for each emote
-            local output_emote_path = output_path .. combo_name .. "/"
-            local guid = get_guid(output_emote_path .. "_menu.asset")
-            entries[#entries + 1] = gen_submenu(combo_name, guid)
-            
-            local entries = {}
-            
-            for i = 1, #emotes do
-                local emote_name = emotes[i]
-                local guid = get_guid(output_emote_path .. emote_name .. ".anim")
-                entries[#entries + 1] = gen_menu_toggle_entry(emote_name, guid)
-            end
-            
-            local data = MENU_HEADER
-            data = string.gsub(data, "$NAME", "Menu")
-            data = string.gsub(data, "$ENTRIES", table.concat(entries))
-            common.write_file(output_emote_path .. "_menu.asset", data)
+            emote_gen_recurse(emotes, output_path, combo_name, entries)
         end
         
         ::continue::
@@ -263,7 +289,6 @@ end
 io.write("Generating Menu.asset...\n")
 dir_recurse("template/combos/", "generated/combos/", "../Menu.asset")
 
-io.write("Generating Gestures (if any)...\n")
 common.for_each_gesture_name_and_value(gen_state_machine_entries_for_gesture)
 
 -- generate parameter drivers

@@ -83,7 +83,7 @@ end
 
 local emotes = {}
 for filename in common.directory("template/emotes/") do
-    local name = string.match(filename, "(.+)%.lua")
+    local name = common.filename_remove_extension(filename)
     emotes[#emotes + 1] = name
 end
 table.sort(emotes)
@@ -215,7 +215,7 @@ local function dir_recurse(input_path, output_path, menu_name)
             goto continue
         end
         
-        local combo_name = string.match(filename, "(.+)%.txt")
+        local combo_name = common.filename_remove_extension(filename)
         
         if #emotes == 0 then
             -- for combo files without emotes, create one menu entry for the combo anim
@@ -253,7 +253,7 @@ local function dir_recurse(input_path, output_path, menu_name)
     end
     
     menu_name = menu_name or "_menu.asset"
-    local pretty_name = string.match(menu_name, "(.+)%.asset")
+    local pretty_name = common.filename_remove_extension(menu_name)
     local data = MENU_HEADER
     data = string.gsub(data, "$NAME", pretty_name)
     data = string.gsub(data, "$ENTRIES", table.concat(entries))

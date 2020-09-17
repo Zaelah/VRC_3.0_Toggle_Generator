@@ -39,7 +39,17 @@ if pptr then
     out = out .. "pptr_curves = [[\n" .. pptr .. "]]\n"
 end
 
-local filename = string.match(path, "([^/\\]+)%.anim") .. ".lua"
-common.write_file(filename, out)
+local refname = string.match(path, "([^/\\]+)%.anim")
+local outpath = "template/states/" .. refname .. ".lua"
+common.write_file(outpath, out)
 
-io.write(string.format('Created "%s", move it into template/states or template/emotes\n', filename))
+io.write(string.format([[
+Created animation template "%s"
+
+To combine this template into a toggleable animation in VRChat, add this line
+to a combo text file under "template/combos/", an emote text file under
+"template/emotes/", or a gesture text file under "template/gestures/":
+
+%s
+
+]], outpath, refname))

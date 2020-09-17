@@ -60,6 +60,10 @@ return {
         return str
     end,
     
+    filename_remove_extension = function(filename)
+        return (string.match(filename, "(.+)%."))
+    end,
+    
     for_each_gesture_name_and_value = function(func)
         for gesture_name, value in pairs(gesture_names_to_values) do
             func(gesture_name, value)

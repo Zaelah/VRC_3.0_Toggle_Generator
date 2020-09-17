@@ -35,31 +35,21 @@ local function open_template(path)
 end
 
 local function templates_by_name(dir)
-    local count = 0
     local tbl = {}
     for filename, path, is_dir in common.directory(dir) do
         if not is_dir then
-            local name = string.match(filename, "(.+)%.lua")
+            local name = common.filename_remove_extension(filename)
             tbl[name] = open_template(path)
-            count = count + 1
         end
     end
-    return tbl, count
+    return tbl
 end
 
 io.write("Loading templates...\n")
-local emotes_by_name, emote_count = templates_by_name("template/emotes/")
 local states_by_name = templates_by_name("template/states/")
 
 local generated_anim_count = 0
 local generated_combo_count = 0
-
-local function newline_str_or_blank(str)
-    if str and str ~= "" then
-        return "\n" .. str
-    end
-    return ""
-end
 
 local function read_combo_file(path)
     -- one entry per line, lines starting with '#' are comments
@@ -93,6 +83,17 @@ local function open_combo(path)
     local pptr = #pptr_curves > 0 and ("\n" .. table.concat(pptr_curves, "\n"))
     
     return float, pptr
+end
+
+local emote_count = 0
+local emotes_by_name = {}
+for filename, path, is_dir in common.directory("template/emotes/") do
+    if not is_dir then
+        local float, pptr = open_combo(path)
+        local name = common.filename_remove_extension(filename)
+        emotes_by_name[name] = { float = float, pptr = pptr }
+        emote_count = emote_count + 1
+    end
 end
 
 local function write_anim_file(path, name, float, pptr)
@@ -136,7 +137,7 @@ local function gen_anims_for_gesture(name)
 end
 
 local function gen_anims_for_combo(filename, input_path, output_path)
-    local combo_name = string.match(filename, "(.+)%.txt")
+    local combo_name = common.filename_remove_extension(filename)
     local states_float, states_pptr = open_combo(input_path)
     
     if emote_count == 0 then
@@ -153,11 +154,11 @@ local function gen_anims_for_combo(filename, input_path, output_path)
         for emote_name, emote_data in pairs(emotes_by_name) do
             local float, pptr
             
-            if states_float or emote_data.float_curves then
-                float = (states_float or "") .. newline_str_or_blank(emote_data.float_curves)
+            if states_float or emote_data.float then
+                float = (states_float or "") .. (emote_data.float or "")
             end
-            if states_pptr or emote_data.pptr_curves then
-                pptr = (states_pptr or "") .. newline_str_or_blank(emote_data.pptr_curves)
+            if states_pptr or emote_data.pptr then
+                pptr = (states_pptr or "") .. (emote_data.pptr or "")
             end
             
             local path = out_dir .. emote_name .. ".anim"

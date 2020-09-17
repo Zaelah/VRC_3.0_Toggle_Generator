@@ -20,7 +20,6 @@ local function is_excluded_filename (filename)
 end
 
 local gesture_names_to_values = {
-    neutral = 0,
     fist = 1,
     open_hand = 2,
     finger_point = 3,

@@ -160,7 +160,6 @@ local function emote_gen_recurse(emotes, dir, name, states_float, states_pptr)
         local path = out_dir .. emote_name .. ".anim"
         local name = name .." ".. emote_name
         write_anim_file(path, name, float, pptr)
-        ::continue::
     end
     
     for name, tbl in pairs(emotes.directories) do

@@ -174,7 +174,7 @@ local function gen_anims_for_combo(filename, input_path, output_path)
     if emote_count == 0 then
         -- no emotes specified, just make a single animation for this combo
         local path = output_path .. combo_name .. ".anim"
-        write_anim_file(path, combo_name, float, pptr)
+        write_anim_file(path, combo_name, states_float, states_pptr)
         generated_anim_count = generated_anim_count + 1
     else
         -- generate a full set of emotes for each combo

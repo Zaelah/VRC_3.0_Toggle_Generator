@@ -6,7 +6,6 @@ local io = require "io"
 local string = require "string"
 local table = require "table"
 
-local path = arg and arg[1]
 if not arg or not arg[1] then
     io.write("Usage: drag and drop a Unity .anim file onto MAKE_TEMPLATE_FROM_ANIM.bat\n")
     return
@@ -28,7 +27,6 @@ local out_paths = {}
 local ref_names = {}
 local function generate_template(path)
     local refname = get_refname(path)
-    print(path, refname)
     if not refname then return end
     count = count + 1
     

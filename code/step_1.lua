@@ -212,3 +212,6 @@ io.write(string.format("Generated %d anims in %d emote sets (%0.3f sec)\n",
                         generated_anim_count,
                         generated_emote_set_count,
                         os.clock()))
+
+-- reminder
+io.write('\nFOCUS YOUR UNITY PROJECT AND WAIT A FEW SECONDS FOR IT TO FINISH "Importing small assets" BEFORE RUNNING STEP 2\n')

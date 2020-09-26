@@ -24,6 +24,8 @@ check:close()
 os.remove("generated/_CHECK_UNITY_META")
 os.remove("generated/_CHECK_UNITY_META.meta")
 
+local template_params = {}
+
 local MENU_HEADER = common.file_to_str("template/static_templates/menu_header.template")
 local MENU_ENTRY = common.file_to_str("template/static_templates/menu_entry.template")
 local PARAM_HEADER = common.file_to_str("template/static_templates/parameters_header.template")
@@ -108,14 +110,13 @@ end
 local emotes = emote_read_recurse("template/emotes/")
 
 local function gen_submenu(name, guid)
-    local entry = MENU_ENTRY
-    entry = string.gsub(entry, "$NAME", name)
-    entry = string.gsub(entry, "$ENTRY_TYPE", MENU_ENTRY_TYPE_SUBMENU)
-    entry = string.gsub(entry, "$PARAM_NAME", " ")
-    entry = string.gsub(entry, "$PARAM_VALUE", "1")
     local submenu = string.format("{fileID: 11400000, guid: %s, type: 2}", guid)
-    entry = string.gsub(entry, "$SUBMENU", submenu)
-    return entry
+    template_params.NAME = name
+    template_params.ENTRY_TYPE = MENU_ENTRY_TYPE_SUBMENU
+    template_params.PARAM_NAME = " "
+    template_params.PARAM_VALUE = "1"
+    template_params.SUBMENU = submenu
+    return common.template_replace(MENU_ENTRY, template_params)
 end
 
 local function gen_state_machine_entry(param_name, param_value, anim_guid, param_driver_id)
@@ -123,17 +124,16 @@ local function gen_state_machine_entry(param_name, param_value, anim_guid, param
     local end_id = next_file_id()
     local anim_id = next_file_id()
     
-    local toggle = CTRL_TOGGLE_ENTRY
-    toggle = string.gsub(toggle, "$PARAM_NAME", param_name)
-    toggle = string.gsub(toggle, "$PARAM_VALUE", param_value)
-    toggle = string.gsub(toggle, "$ANIM_GUID", anim_guid)
-    toggle = string.gsub(toggle, "$ANIM_NAME", param_name .. param_value)
-    toggle = string.gsub(toggle, "$BEGIN_STATE_ID", begin_id)
-    toggle = string.gsub(toggle, "$END_STATE_ID", end_id)
-    toggle = string.gsub(toggle, "$ANIM_STATE_ID", anim_id)
     local param_driver = param_driver_id and ("\n  - {fileID: ".. param_driver_id .."}")
-    toggle = string.gsub(toggle, "$PARAM_DRIVER_ID", param_driver or " []")
-    ctrl_toggles[#ctrl_toggles + 1] = toggle
+    template_params.PARAM_NAME = param_name
+    template_params.PARAM_VALUE = param_value
+    template_params.ANIM_GUID = anim_guid
+    template_params.ANIM_NAME = param_name .. param_value
+    template_params.BEGIN_STATE_ID = begin_id
+    template_params.END_STATE_ID = end_id
+    template_params.ANIM_STATE_ID = anim_id
+    template_params.PARAM_DRIVER_ID = param_driver or " []"
+    ctrl_toggles[#ctrl_toggles + 1] = common.template_replace(CTRL_TOGGLE_ENTRY, template_params)
     
     local begin_entry = CTRL_BEGIN_STATE_ENTRY
     begin_entry = string.gsub(begin_entry, "$BEGIN_STATE_ID", begin_id)
@@ -147,16 +147,15 @@ end
 local function gen_menu_toggle_entry(name, guid)
     local param_letter, param_value, param_driver_id = next_param()
     
-    local entry = MENU_ENTRY
-    entry = string.gsub(entry, "$NAME", name)
-    entry = string.gsub(entry, "$ENTRY_TYPE", MENU_ENTRY_TYPE_TOGGLE)
-    entry = string.gsub(entry, "$PARAM_NAME", param_letter)
-    entry = string.gsub(entry, "$PARAM_VALUE", param_value)
-    entry = string.gsub(entry, "$SUBMENU", "{fileID: 0}")
-    
     -- create corresponding state machine entry for this anim
     gen_state_machine_entry(param_letter, param_value, guid, param_driver_id)
-    return entry
+    
+    template_params.NAME = name
+    template_params.ENTRY_TYPE = MENU_ENTRY_TYPE_TOGGLE
+    template_params.PARAM_NAME = param_letter
+    template_params.PARAM_VALUE = param_value
+    template_params.SUBMENU = "{fileID: 0}"
+    return common.template_replace(MENU_ENTRY, template_params)
 end
 
 local gesture_msg
@@ -211,9 +210,9 @@ local function emote_gen_recurse(emotes, output_path, name, parent_entries)
         emote_gen_recurse(tbl, output_emote_path, name, entries)
     end
     
-    local data = MENU_HEADER
-    data = string.gsub(data, "$NAME", "Menu")
-    data = string.gsub(data, "$ENTRIES", table.concat(entries))
+    template_params.NAME = "Menu"
+    template_params.ENTRIES = table.concat(entries)
+    local data = common.template_replace(MENU_HEADER, template_params)
     common.write_file(output_emote_path .. "_menu.asset", data)
 end
 
@@ -280,9 +279,9 @@ local function dir_recurse(input_path, output_path, menu_name)
     
     menu_name = menu_name or "_menu.asset"
     local pretty_name = common.filename_remove_extension(menu_name)
-    local data = MENU_HEADER
-    data = string.gsub(data, "$NAME", pretty_name)
-    data = string.gsub(data, "$ENTRIES", table.concat(entries))
+    template_params.NAME = pretty_name
+    template_params.ENTRIES = table.concat(entries)
+    local data = common.template_replace(MENU_HEADER, template_params)
     common.write_file(output_path .. menu_name, data)
 end
 
@@ -305,11 +304,11 @@ for _, a in pairs(param_letter_by_driver_id) do
 end
 
 for driver_id, letter in pairs(param_letter_by_driver_id) do
-    local header = PARAM_DRIVER_HEADER
-    header = string.gsub(header, "$PARAM_DRIVER_ID", driver_id)
     local entries = entries_by_letter[letter]
     local entries_str = #entries > 0 and ("\n" .. table.concat(entries, "\n")) or " []"
-    header = string.gsub(header, "$ENTRIES", entries_str)
+    template_params.PARAM_DRIVER_ID = driver_id
+    template_params.ENTRIES = entries_str
+    local header = common.template_replace(PARAM_DRIVER_HEADER, template_params)
     ctrl_param_drivers[#ctrl_param_drivers + 1] = header
 end
 
@@ -323,19 +322,20 @@ for i = #param_entries + 1, slots do
     param_entries[i] = string.gsub(PARAM_ENTRY, "$NAME", "")
 end
 
-local data = PARAM_HEADER
-data = string.gsub(data, "$NAME", "Parameters")
-data = string.gsub(data, "$ENTRIES", table.concat(param_entries, "\n"))
+template_params.NAME = "Parameters"
+template_params.ENTRIES = table.concat(param_entries, "\n")
+local data = common.template_replace(PARAM_HEADER, template_params)
 common.write_file("generated/Parameters.asset", data)
 
 -- generate FXLayer
 io.write("Generating FXLayer.controller...\n")
 local ctrl = common.file_to_str("template/static_templates/anim_controller.template")
-ctrl = string.gsub(ctrl, "$PARAMS", table.concat(ctrl_params, "\n"))
-ctrl = string.gsub(ctrl, "$PARAM_DRIVERS", table.concat(ctrl_param_drivers, "\n"))
-ctrl = string.gsub(ctrl, "$TOGGLES", table.concat(ctrl_toggles, "\n"))
-ctrl = string.gsub(ctrl, "$ANIM_STATE_ID_ENTRIES", table.concat(ctrl_anim_state_ids, "\n"))
-ctrl = string.gsub(ctrl, "$BEGIN_STATE_ID_ENTRIES", table.concat(ctrl_begin_state_ids, "\n"))
-common.write_file("generated/FXLayer.controller", ctrl)
+template_params.PARAMS = table.concat(ctrl_params, "\n")
+template_params.PARAM_DRIVERS = table.concat(ctrl_param_drivers, "\n")
+template_params.TOGGLES = table.concat(ctrl_toggles, "\n")
+template_params.ANIM_STATE_ID_ENTRIES = table.concat(ctrl_anim_state_ids, "\n")
+template_params.BEGIN_STATE_ID_ENTRIES = table.concat(ctrl_begin_state_ids, "\n")
+local data = common.template_replace(ctrl, template_params)
+common.write_file("generated/FXLayer.controller", data)
 
 io.write("Done\n")

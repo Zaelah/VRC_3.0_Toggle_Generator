@@ -14,6 +14,7 @@ local pairs = pairs
 local setfenv = setfenv
 
 local ANIM_TEMPLATE = common.file_to_str("template/static_templates/anim.template")
+local template_params = {}
 
 local function touch(path)
     local file = assert(io.open(path, "wb+"))
@@ -103,10 +104,10 @@ end
 local emotes = emote_read_recurse("template/emotes/")
 
 local function write_anim_file(path, name, float, pptr)
-    local data = ANIM_TEMPLATE
-    data = string.gsub(data, "$NAME", name)
-    data = string.gsub(data, "$FLOAT_CURVES", float or " []")
-    data = string.gsub(data, "$PPTR_CURVES", pptr or " []")
+    template_params.NAME = name
+    template_params.FLOAT_CURVES = float or " []"
+    template_params.PPTR_CURVES = pptr or " []"
+    local data = common.template_replace(ANIM_TEMPLATE, template_params)
     common.write_file(path, data)
 end
 

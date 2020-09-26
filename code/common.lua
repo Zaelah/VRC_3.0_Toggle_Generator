@@ -69,6 +69,16 @@ return {
         end
     end,
     
+    template_replace = function(str, params)
+        return string.gsub(str, "$([%w_]+)", function(key)
+            local val = params[key]
+            if not val then
+                error(string.format("Missing template parameter value for '%s'", key))
+            end
+            return val
+        end)
+    end,
+    
     write_file = function(path, data)
         local file = assert(io.open(path, "wb+"))
         file:write(data)

@@ -73,7 +73,7 @@ local function open_combo(path)
         local state = states_by_name[list[i]]
         
         if not state then
-            common.errfmt('Unknown state "%s" found in "%s"', list[i], input_path)
+            common.errfmt('Unknown state "%s" found in "%s"', list[i], path)
         end
         
         float_curves[#float_curves + 1] = state.float_curves

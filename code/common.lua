@@ -29,6 +29,15 @@ local gesture_names_to_values = {
     thumbs_up = 7,
 }
 
+local template_params = {}
+local function template_params_impl(key)
+    local val = template_params[key]
+    if not val then
+        error(string.format("Missing template parameter value for '%s'", key))
+    end
+    return val
+end
+
 return {
     directory = function(dir_path)
         if not string.find(dir_path, "[/\\]$") then
@@ -69,14 +78,12 @@ return {
         end
     end,
     
-    template_replace = function(str, params)
-        return string.gsub(str, "$([%w_]+)", function(key)
-            local val = params[key]
-            if not val then
-                error(string.format("Missing template parameter value for '%s'", key))
-            end
-            return val
-        end)
+    template_replace = function(str)
+        return string.gsub(str, "$([%w_]+)", template_params_impl)
+    end,
+    
+    template_replace_get_tbl = function()
+        return template_params
     end,
     
     write_file = function(path, data)

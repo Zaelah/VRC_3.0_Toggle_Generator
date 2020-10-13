@@ -24,7 +24,7 @@ check:close()
 os.remove("generated/_CHECK_UNITY_META")
 os.remove("generated/_CHECK_UNITY_META.meta")
 
-local template_params = {}
+local template_params = common.template_replace_get_tbl()
 
 local MENU_HEADER = common.file_to_str("template/static_templates/menu_header.template")
 local MENU_ENTRY = common.file_to_str("template/static_templates/menu_entry.template")
@@ -116,7 +116,7 @@ local function gen_submenu(name, guid)
     template_params.PARAM_NAME = " "
     template_params.PARAM_VALUE = "1"
     template_params.SUBMENU = submenu
-    return common.template_replace(MENU_ENTRY, template_params)
+    return common.template_replace(MENU_ENTRY)
 end
 
 local function gen_state_machine_entry(param_name, param_value, anim_guid, param_driver_id)
@@ -133,7 +133,7 @@ local function gen_state_machine_entry(param_name, param_value, anim_guid, param
     template_params.END_STATE_ID = end_id
     template_params.ANIM_STATE_ID = anim_id
     template_params.PARAM_DRIVER_ID = param_driver or " []"
-    ctrl_toggles[#ctrl_toggles + 1] = common.template_replace(CTRL_TOGGLE_ENTRY, template_params)
+    ctrl_toggles[#ctrl_toggles + 1] = common.template_replace(CTRL_TOGGLE_ENTRY)
     
     local begin_entry = CTRL_BEGIN_STATE_ENTRY
     begin_entry = string.gsub(begin_entry, "$BEGIN_STATE_ID", begin_id)
@@ -155,7 +155,7 @@ local function gen_menu_toggle_entry(name, guid)
     template_params.PARAM_NAME = param_letter
     template_params.PARAM_VALUE = param_value
     template_params.SUBMENU = "{fileID: 0}"
-    return common.template_replace(MENU_ENTRY, template_params)
+    return common.template_replace(MENU_ENTRY)
 end
 
 local gesture_msg
@@ -212,7 +212,7 @@ local function emote_gen_recurse(emotes, output_path, name, parent_entries)
     
     template_params.NAME = "Menu"
     template_params.ENTRIES = table.concat(entries)
-    local data = common.template_replace(MENU_HEADER, template_params)
+    local data = common.template_replace(MENU_HEADER)
     common.write_file(output_emote_path .. "_menu.asset", data)
 end
 
@@ -281,7 +281,7 @@ local function dir_recurse(input_path, output_path, menu_name)
     local pretty_name = common.filename_remove_extension(menu_name)
     template_params.NAME = pretty_name
     template_params.ENTRIES = table.concat(entries)
-    local data = common.template_replace(MENU_HEADER, template_params)
+    local data = common.template_replace(MENU_HEADER)
     common.write_file(output_path .. menu_name, data)
 end
 
@@ -308,7 +308,7 @@ for driver_id, letter in pairs(param_letter_by_driver_id) do
     local entries_str = #entries > 0 and ("\n" .. table.concat(entries, "\n")) or " []"
     template_params.PARAM_DRIVER_ID = driver_id
     template_params.ENTRIES = entries_str
-    local header = common.template_replace(PARAM_DRIVER_HEADER, template_params)
+    local header = common.template_replace(PARAM_DRIVER_HEADER)
     ctrl_param_drivers[#ctrl_param_drivers + 1] = header
 end
 
@@ -324,7 +324,7 @@ end
 
 template_params.NAME = "Parameters"
 template_params.ENTRIES = table.concat(param_entries, "\n")
-local data = common.template_replace(PARAM_HEADER, template_params)
+local data = common.template_replace(PARAM_HEADER)
 common.write_file("generated/Parameters.asset", data)
 
 -- generate FXLayer
@@ -335,7 +335,7 @@ template_params.PARAM_DRIVERS = table.concat(ctrl_param_drivers, "\n")
 template_params.TOGGLES = table.concat(ctrl_toggles, "\n")
 template_params.ANIM_STATE_ID_ENTRIES = table.concat(ctrl_anim_state_ids, "\n")
 template_params.BEGIN_STATE_ID_ENTRIES = table.concat(ctrl_begin_state_ids, "\n")
-local data = common.template_replace(ctrl, template_params)
+local data = common.template_replace(ctrl)
 common.write_file("generated/FXLayer.controller", data)
 
 io.write("Done\n")

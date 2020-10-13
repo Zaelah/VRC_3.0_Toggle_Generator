@@ -34,6 +34,12 @@ local function generate_template(path)
 
     local float, pptr = string.match(str, "m_FloatCurves:(.-)[ ]*m_PPtrCurves:(.-)[ ]*m_SampleRate:")
 
+    if not float or not pptr then
+        local fmt = "ERROR: animation is in binary format instead of text. Binary animation data is not supported: %s\n"
+        io.write(string.format(fmt, path))
+        return
+    end
+
     float = process(float)
     pptr = process(pptr)
 
